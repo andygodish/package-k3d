@@ -1,0 +1,103 @@
+includes:
+  - k3d: ./tasks/k3d.yaml
+
+variables:
+  - name: K3D_REGISTRY
+    description: "Remote OCI registry for UDS K3d package"
+    default: "ghcr.io/defenseunicorns/packages"
+  - name: K3D_PACKAGE_NAME
+    description: "Name of the UDS K3d package"
+    default: "uds-k3d"
+  - name: K3D_PACKAGE_VERSION
+    description: "Version of the UDS K3d package"
+    default: "0.16.0"
+  - name: CLUSTER_NAME
+    description: "Name of the K3d cluster"
+    default: ""
+  - name: DOMAIN
+    description: "Cluster domain for development"
+    default: "uds.dev"
+  - name: ARCHITECTURE
+    description: "System architecture (amd64 or arm64)"
+    default: ""
+
+tasks:
+  - name: pull-k3d-package
+    description: "Pull UDS K3d package from OCI registry"
+    actions:
+      - description: "Pull UDS K3d package from OCI registry"
+        cmd: |
+          echo "Pulling UDS K3d package ${K3D_PACKAGE_NAME}:${K3D_PACKAGE_VERSION} from ${K3D_REGISTRY}"
+          
+          # Build architecture flag if specified
+          ARCH_FLAG=""
+          if [ -n "${ARCHITECTURE}" ]; then
+            ARCH_FLAG="-a ${ARCHITECTURE}"
+            echo "Using specified architecture: ${ARCHITECTURE}"
+          else
+            echo "Using auto-detected architecture"
+          fi
+          
+          uds zarf package pull ${ARCH_FLAG} oci://${K3D_REGISTRY}/${K3D_PACKAGE_NAME}:${K3D_PACKAGE_VERSION}
+        env:
+          - ZARF_LOG_LEVEL=info
+
+  - name: deploy-k3d-dev
+    description: "Deploy K3d cluster with development settings"
+    actions:
+      - description: "Deploy K3d cluster with dev overrides"
+        cmd: |
+          echo "Deploying K3d cluster '${CLUSTER_NAME}' with domain '${DOMAIN}'"
+          
+          # Deploy with development-focused overrides
+          uds zarf package deploy zarf-package-uds-k3d-*-${K3D_PACKAGE_VERSION}.tar.zst \
+            --set CLUSTER_NAME=${CLUSTER_NAME} \
+            --set DOMAIN=${DOMAIN} \
+            --set ADMIN_DOMAIN=admin.${DOMAIN} \
+            --set K3D_API_PORT=6550 \
+            --set K3D_HTTP_PORT=80 \
+            --set K3D_HTTPS_PORT=443 \
+            --set K3D_DEBUG=true \
+            --set K3D_IMAGE=rancher/k3s:v1.32.5-k3s1 \
+            --set K3D_ULIMIT_NOFILE=1048576:1048576 \
+            --confirm
+        env:
+          - ZARF_LOG_LEVEL=info
+        maxTotalSeconds: 600
+
+  - name: k3d-dev-setup
+    description: "Complete K3d dev environment setup (pull + deploy)"
+    actions:
+      - task: pull-k3d-package
+      - task: deploy-k3d-dev
+
+  - name: destroy-k3d-cluster
+    description: "Destroy a K3d cluster"
+    actions:
+      - description: "Destroy K3d cluster"
+        cmd: |
+          echo "Destroying K3d cluster: ${CLUSTER_NAME}"
+          k3d cluster delete ${CLUSTER_NAME} || echo "Cluster ${CLUSTER_NAME} may not exist or already destroyed"
+
+  - name: clean-k3d-package
+    description: "Remove local UDS K3d package files"
+    actions:
+      - description: "Clean up local K3d package files"
+        cmd: |
+          echo "Cleaning up local UDS K3d package files"
+          rm -f zarf-package-uds-k3d*.tar.zst
+          echo "Package files removed"
+
+  - name: inspect-k3d-package
+    description: "Inspect the UDS K3d package to see its contents and variables"
+    actions:
+      - description: "Inspect UDS K3d package contents and available variables"
+        cmd: |
+          echo "Inspecting UDS K3d package:"
+          uds zarf package inspect zarf-package-uds-k3d*.tar.zst
+
+  - name: k3d-cleanup
+    description: "Complete cleanup - destroy cluster and remove package files"
+    actions:
+      - task: destroy-k3d-cluster
+      - task: clean-k3d-package
