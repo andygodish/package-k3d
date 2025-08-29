@@ -23,8 +23,8 @@ COREDNS_OVERRIDES = '''rewrite stop {
 }
 rewrite stop {
   name regex (.*\.uds\.local) tenant-ingressgateway.istio-tenant-gateway.svc.cluster.local answer auto
-}
-'''
+}'''
+```
 
 is valid because COREDNS_OVERRIDES is defined as a package variable in the package's `package.yaml` file:
 
