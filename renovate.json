@@ -12,6 +12,14 @@
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "defenseunicorns/uds-k3d",
       "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["^zarf-config\\.toml$"],
+      "matchStrings": [
+        "K3D_IMAGE\\s*=\\s*\"(?<depName>rancher/k3s):(?<currentValue>[^\"]+)\""
+      ],
+      "datasourceTemplate": "docker"
     }
   ],
   "packageRules": [
@@ -22,6 +30,14 @@
       "semanticCommitType": "deps",
       "semanticCommitScope": "k3d",
       "commitMessageTopic": "UDS K3d package"
+    },
+    {
+      "matchManagers": ["regex"],
+      "matchPackageNames": ["rancher/k3s"],
+      "groupName": "K3s Image",
+      "semanticCommitType": "deps",
+      "semanticCommitScope": "k3s",
+      "commitMessageTopic": "K3s image"
     }
   ]
 }
