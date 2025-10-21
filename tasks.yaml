@@ -18,7 +18,7 @@ variables:
     default: "zarf-config.toml"
 
 tasks:
-  - name: pull-k3d-package
+  - name: pull
     description: "Pull UDS K3d package from OCI registry"
     actions:
       - description: "Pull UDS K3d package from OCI registry"
@@ -37,7 +37,7 @@ tasks:
         env:
           - ZARF_LOG_LEVEL=info
 
-  - name: deploy-k3d-dev
+  - name: deploy
     description: "Deploy K3d cluster with development settings"
     actions:
       - description: "Deploy K3d cluster with root zarf-config.toml"
@@ -45,13 +45,7 @@ tasks:
           ZARF_CONFIG="$CONFIG_FILE" uds zarf package deploy zarf-package-uds-k3d-*-${K3D_PACKAGE_VERSION}.tar.zst \
             --confirm
 
-  - name: k3d-dev-setup
-    description: "Complete K3d dev environment setup (pull + deploy)"
-    actions:
-      - task: pull-k3d-package
-      - task: deploy-k3d-dev
-
-  - name: clean-k3d-packages
+  - name: clean
     description: "Remove local UDS K3d package files"
     actions:
       - description: "Clean up local K3d package files"

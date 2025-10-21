@@ -19,3 +19,4 @@ COREDNS_OVERRIDES = '''rewrite stop {
 rewrite stop {
   name regex (.*\.uds\.local) tenant-ingressgateway.istio-tenant-gateway.svc.cluster.local answer auto
 }'''
+
