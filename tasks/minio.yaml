@@ -1,0 +1,39 @@
+# Copyright 2024 Defense Unicorns
+# SPDX-License-Identifier: AGPL-3.0-or-later OR LicenseRef-Defense-Unicorns-Commercial
+# yaml-language-server: $schema=https://raw.githubusercontent.com/defenseunicorns/uds-cli/main/tasks.schema.json
+
+tasks:
+  - name: port-forward
+    description: "Port forward MinIO backend and console service to localhost"
+    actions:
+      - cmd: |
+          echo "Port forwarding MinIO backend service to localhost:9000"
+          kubectl port-forward -n uds-dev-stack svc/minio 9000:9000
+          echo "Port forwarding MinIO backend service to localhost:9001"
+          kubectl port-forward -n uds-dev-stack svc/minio-backend 9000:9001
+
+  - name: configure-minio-alias
+    actions:
+      - cmd: |
+          alias kubectl="uds zarf tools kubectl"
+          MINIO_USER="$(kubectl get secret -n uds-dev-stack minio -o yaml | yq '.data.rootUser' | base64 -d)"
+          MINIO_PASSWORD="$(kubectl get secret -n uds-dev-stack minio -o yaml | yq '.data.rootPassword' | base64 -d)"
+
+          echo "Configuring MinIO alias 'local' with access key '${MINIO_USER}'"
+          mc alias set local http://localhost:9000 "${MINIO_USER}" "${MINIO_PASSWORD}"
+
+  - name: extract-secret-data
+    inputs:
+      namespace:
+        description: The namespace containing your secret
+        required: true
+      secret:
+        description: The name of the secret you wish to extract from.
+        required: true
+      data:
+        description: yq formatted data query you wish to extract from the declared secret.
+        required: true
+    actions:
+      - cmd: | 
+          alias kubectl="uds zarf tools kubectl"
+          kubectl get secret -n ${{ .inputs.namespace }} ${{ .inputs.secret }} -o yaml | yq '${{ .inputs.data }}' | base64 -d
