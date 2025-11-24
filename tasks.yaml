@@ -54,3 +54,28 @@ tasks:
           echo "Cleaning up local UDS K3d package files"
           rm -f zarf-package-uds-k3d*.tar.zst
           echo "Package files removed"
+
+  - name: setup-zarf-registry-minio-backend
+    description: "Set up MinIO backend for the zarf registry to use as a backend"
+    actions: 
+      - task: minio:port-forward
+      - task: minio:configure-alias
+      - task: minio:create-bucket
+        with:
+          alias: local
+          bucket: zarf-registry
+      - task: minio:create-policy
+        with:
+          alias: local
+          policy: zarf-registry-policy
+          file: zarf-registry-policy.json
+      - task: minio:create-user
+        with:
+          alias: local
+          username: zarf-registry
+          secret: zarf-registry-secret
+      - task: minio:attach-policy-to-user
+        with:
+          alias: local
+          policy: zarf-registry-policy
+          username: zarf-registry

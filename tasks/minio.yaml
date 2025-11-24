@@ -8,11 +8,12 @@ tasks:
     actions:
       - cmd: |
           echo "Port forwarding MinIO backend service to localhost:9000"
-          kubectl port-forward -n uds-dev-stack svc/minio 9000:9000
-          echo "Port forwarding MinIO backend service to localhost:9001"
-          kubectl port-forward -n uds-dev-stack svc/minio-backend 9000:9001
+          nohup kubectl port-forward -n uds-dev-stack svc/minio 9000:9000 >/tmp/minio-port-forward.log 2>&1 &
+          echo "Port forwarding MinIO console service to localhost:9001"
+          nohup kubectl port-forward -n uds-dev-stack svc/minio-backend 9001:9001 >>/tmp/minio-port-forward.log 2>&1 &
+          echo "Port-forwarding started; logs in /tmp/minio-port-forward.log"
 
-  - name: configure-minio-alias
+  - name: configure-alias
     actions:
       - cmd: |
           alias kubectl="uds zarf tools kubectl"
@@ -37,3 +38,100 @@ tasks:
       - cmd: | 
           alias kubectl="uds zarf tools kubectl"
           kubectl get secret -n ${{ .inputs.namespace }} ${{ .inputs.secret }} -o yaml | yq '${{ .inputs.data }}' | base64 -d
+
+  - name: create-bucket
+    inputs:
+      alias:
+        description: The mc alias where the bucket will be created
+        required: true
+        default: "local"
+      bucket:
+        description: The name of the bucket to create
+        required: true
+    actions: 
+      - cmd: |
+          if mc ls ${{ .inputs.alias }}/${{ .inputs.bucket }} >/dev/null 2>&1; then
+            echo "Bucket '${{ .inputs.bucket }}' already exists on alias '${{ .inputs.alias }}'—skipping create"
+          else
+            mc mb ${{ .inputs.alias }}/${{ .inputs.bucket }}
+          fi
+
+  - name: create-policy
+    description: "Create a MinIO policy from a local policy file"
+    inputs:
+      alias:
+        description: The mc alias where the policy will be created
+        required: true
+        default: "local"
+      policy:
+        description: The name of the policy to create
+        required: true
+      file:
+        description: The local policy file to use
+        required: false
+    actions:
+      - cmd: mc admin policy create ${{ .inputs.alias }} ${{ .inputs.policy }} ${{ .inputs.file }}
+
+  - name: create-user
+    description: "Create a MinIO user with access and secret keys"
+    inputs:
+      alias:
+        description: The mc alias where the user will be created
+        required: true
+        default: "local"
+      username:
+        description: The username for the new user
+        required: true
+      secret:
+        description: The secret key for the new user
+        required: true
+    actions:
+      - cmd: mc admin user add ${{ .inputs.alias }} ${{ .inputs.username }} ${{ .inputs.secret }}
+
+  - name: attach-policy-to-user
+    inputs:
+      alias:
+        description: The mc alias where the policy will be attached
+        required: true
+        default: "local"
+      policy:
+        description: The name of the policy to attach
+        required: true
+      username:
+        description: The username to attach the policy to
+        required: true
+    actions:
+      - cmd: mc admin policy attach ${{ .inputs.alias }} ${{ .inputs.policy }} --user ${{ .inputs.username }}
+
+  - name: list-policies
+    description: "List MinIO policies on specified alias"
+    inputs:
+      alias:
+        description: The mc alias to list policies from
+        required: true
+        default: "local"
+    actions:
+      - cmd: mc admin policy list ${{ .inputs.alias }}
+
+  - name: list-users
+    description: "List MinIO users on specified alias"
+    inputs:
+      alias:
+        description: The mc alias to list users from
+        required: true
+        default: "local"
+    actions:
+      - cmd: mc admin user list ${{ .inputs.alias }}
+
+  - name: inspect-user
+    description: "Inspect MinIO user details on specified alias"
+    inputs:
+      alias:
+        description: The mc alias to inspect the user from
+        required: true
+        default: "local"
+      username:
+        description: The username to inspect
+        required: true
+    actions:
+      - cmd: mc admin user info ${{ .inputs.alias }} ${{ .inputs.username }}
