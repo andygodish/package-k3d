@@ -11,7 +11,7 @@ timeout = 900000000000
 [package.deploy.set]
 CLUSTER_NAME = "lab"
 DOMAIN = "uds.local"
-K3D_IMAGE = "rancher/k3s:v1.34.2-k3s1"
+K3D_IMAGE = "rancher/k3s:v1.34.3-k3s1"
 K3D_EXTRA_ARGS = "--k3s-arg --tls-san=192.168.1.61@server:*"
 COREDNS_OVERRIDES = '''rewrite stop {
   name regex (.*\.admin\.uds\.local) admin-ingressgateway.istio-admin-gateway.svc.cluster.local answer auto
