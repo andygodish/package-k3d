@@ -10,7 +10,7 @@ variables:
     default: "uds-k3d"
   - name: K3D_PACKAGE_VERSION
     description: "Version of the UDS K3d package"
-    default: "0.19.2"
+    default: "0.19.4"
   - name: ARCHITECTURE
     description: "System architecture (amd64 or arm64)"
     default: ""
