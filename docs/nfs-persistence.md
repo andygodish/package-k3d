@@ -4,11 +4,15 @@ This repo’s `uds-k3d` dev cluster normally provisions PVs using the **local-pa
 
 If you want PV data to live on a NAS (QNAP, etc.) via NFS **without rebuilding the k3d node image**, the reliable pattern on macOS is:
 
-1. **Mount NFS via a Docker volume** (Docker Desktop’s Linux VM does the NFS mount).
-2. **Bind-mount that Docker volume into the k3d server node** at the directory(ies) the local-path provisioner uses.
-3. Optionally create a **named StorageClass** (e.g. `nfs-client`) to make intent explicit.
+1. **Mount NFS via a Docker volume** (on this machine: **Colima’s Linux VM** performs the NFS mount).
+2. **Bind-mount that Docker volume into the k3d server node** at the directory the local-path provisioner uses for PV directories.
 
-This avoids the common k3d issue where the k3s node container does **not** include `mount.nfs` / `nfs-utils`, which breaks “in-cluster” NFS provisioners/CSI drivers.
+This approach keeps Kubernetes using the existing `rancher.io/local-path` provisioner, but swaps the underlying filesystem for NAS-backed storage.
+
+Optional:
+- Create a **named StorageClass** (e.g. `nfs-client`) to make intent explicit (but it is not required if everything can just keep using the default `local-path`).
+
+This avoids the common k3d issue where the k3s node container does **not** include `mount.nfs` / `nfs-utils`, which breaks “in-cluster” NFS provisioners/CSI drivers. Instead, the NFS mount is performed by the container runtime (Colima VM) and presented to the k3d node as a ready-to-use filesystem.
 
 ---
 
@@ -40,20 +44,25 @@ docker volume inspect uds-local-nfs
 
 ### 2) Mount the Docker NFS volume into the k3d server node
 
-Edit `configs/uds-dev.yaml` and extend `K3D_EXTRA_ARGS`:
+Edit `configs/uds-dev.yaml` and extend `K3D_EXTRA_ARGS`.
+
+**Recommended (current uds-k3d behavior): mount the path that the local-path provisioner actually uses.**
+
+This dev stack configures the local-path provisioner with:
+
+- `sharedFileSystemPath: /opt/local-path-provisioner-rwx`
+
+So mount your NAS-backed Docker volume there:
 
 ```yaml
 package:
   deploy:
     set:
       K3D_EXTRA_ARGS: "--k3s-arg --tls-san=192.168.1.61@server:* \
-        --volume uds-local-nfs:/var/lib/rancher/k3s/storage@server:* \
         --volume uds-local-nfs:/opt/local-path-provisioner-rwx@server:*"
 ```
 
-Why mount both paths?
-- `/var/lib/rancher/k3s/storage` is the conventional k3s local-path location.
-- This uds-k3d dev stack uses a directory like `/opt/local-path-provisioner-rwx` for PV data, so you must ensure *that* path is on NFS too.
+Optional: you *can* also mount `/var/lib/rancher/k3s/storage` if you want to keep compatibility with the conventional k3s location, but it is not required for this repo’s default local-path configuration.
 
 ### 3) Recreate/redeploy the cluster
 
@@ -66,19 +75,23 @@ Verify from inside the server node:
 ```sh
 SERVER_NODE=$(k3d node list -o json | jq -r '.[] | select(.role=="server") | .name' | head -n1)
 
-docker exec "$SERVER_NODE" sh -lc 'mount | grep -E "(/var/lib/rancher/k3s/storage|/opt/local-path-provisioner-rwx)"'
-docker exec "$SERVER_NODE" sh -lc 'df -h /var/lib/rancher/k3s/storage /opt/local-path-provisioner-rwx'
+docker exec "$SERVER_NODE" sh -lc 'mount | grep -E "(/opt/local-path-provisioner-rwx)"'
+docker exec "$SERVER_NODE" sh -lc 'df -h /opt/local-path-provisioner-rwx'
 ```
 
-You should see `:/uds-local` mounted at both paths.
+You should see the NFS export (e.g. `:/uds-local`) mounted at `/opt/local-path-provisioner-rwx`.
 
 ---
 
 ## Optional: create a named StorageClass (`nfs-client`)
 
-Even though the provisioner is still `rancher.io/local-path`, having a specific StorageClass name is useful:
-- Makes charts/values files explicit ("this PVC is intended to persist on NAS")
-- Lets you change defaults later without editing every workload
+**You do not need a second StorageClass** if your goal is simply: “make the default `local-path` persistent via the NAS mount”. Once `/opt/local-path-provisioner-rwx` is backed by NFS, the default `local-path` StorageClass will place PV data on the NAS automatically.
+
+However, creating a second StorageClass can still be useful as a semantic label:
+- makes charts/values files explicit ("this PVC is intended to persist on NAS")
+- gives you an easy switch later (e.g., if you ever re-introduce a truly-local/non-NFS backing path)
+
+Important: with the current `sharedFileSystemPath` configuration, both `local-path` and `nfs-client` will still provision under `/opt/local-path-provisioner-rwx` unless you run a second provisioner with a different config.
 
 ```sh
 cat <<'EOF' | kubectl apply -f -
