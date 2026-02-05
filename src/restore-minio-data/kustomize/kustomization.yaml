@@ -1,0 +1,28 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - pv-minio-restore.yaml
+
+# This configmap is just a kustomize input source for replacements.
+# Set NAS_SHARE_PATH_FULL to the *full* path visible on the k3d node.
+configMapGenerator:
+  - name: restore-minio-data-config
+    literals:
+      # Example old PV directory (edit per restore target)
+      - NAS_SHARE_PATH_FULL=/opt/local-path-provisioner-rwx/pvc-095630d7-e07b-45e6-8b1a-d38dba2a3ddf_uds-dev-stack_minio
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+replacements:
+  - source:
+      kind: ConfigMap
+      name: restore-minio-data-config
+      fieldPath: data.NAS_SHARE_PATH_FULL
+    targets:
+      - select:
+          kind: PersistentVolume
+          name: pv-minio-restore
+        fieldPaths:
+          - spec.hostPath.path

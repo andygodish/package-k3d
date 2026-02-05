@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-minio-restore
+  labels:
+    app: minio
+    restore: "true"
+spec:
+  capacity:
+    storage: 50Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+
+  # Keep data safe during experimentation
+  persistentVolumeReclaimPolicy: Retain
+
+  hostPath:
+    type: Directory
+    # This gets replaced by kustomize via kustomization.yaml replacements.
+    path: /opt/local-path-provisioner-rwx/REPLACED_BY_KUSTOMIZE
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: minio
+  namespace: uds-dev-stack
+  labels:
+    app: minio
+    restore: "true"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 50Gi
+
+  # Pre-bind this PVC to the PV above
+  volumeName: pv-minio-restore
