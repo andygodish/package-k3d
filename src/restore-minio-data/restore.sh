@@ -18,7 +18,23 @@ set -euo pipefail
 
 NS=${NS:-uds-dev-stack}
 MINIO_DEPLOY=${MINIO_DEPLOY:-minio}
-KUSTOMIZE_DIR=${KUSTOMIZE_DIR:-"$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/kustomize"}
+
+# Pick what to apply:
+# - OVERLAY=base|test|prod (preferred)
+# - or KUSTOMIZE_DIR=/path/to/kustomize (advanced override)
+# If neither is set, we default to the original kustomize/ dir for backward compatibility.
+OVERLAY=${OVERLAY:-}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [[ -n "${OVERLAY}" ]]; then
+  if [[ "${OVERLAY}" == "base" ]]; then
+    KUSTOMIZE_DIR="${SCRIPT_DIR}/base"
+  else
+    KUSTOMIZE_DIR="${SCRIPT_DIR}/overlays/${OVERLAY}"
+  fi
+else
+  KUSTOMIZE_DIR=${KUSTOMIZE_DIR:-"${SCRIPT_DIR}/kustomize"}
+fi
 
 SCALE_UP_REPLICAS=${SCALE_UP_REPLICAS:-1}
 
