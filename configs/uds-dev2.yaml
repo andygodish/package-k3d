@@ -1,0 +1,17 @@
+# Zarf config for deploying the uds-k3d package to a local dev environment.
+# This config intentionally uses the uds.dev domain (NOT uds.local).
+
+log_format: console
+log_level: info
+
+package:
+  oci_concurrency: 6
+  deploy:
+    retries: 3
+    timeout: 900000000000
+    set:
+      K3D_IMAGE: rancher/k3s:v1.35.0-k3s1
+      # Mount the QNAP NFS export into the default local-path directory inside the k3d node.
+      # This makes the default local-path provisioner persist data on the NAS.
+      # NOTE: Requires the Docker volume `uds-local-nfs` to exist.
+      K3D_EXTRA_ARGS: "--k3s-arg --tls-san=192.168.1.64@server:* --volume uds-dev-nfs:/opt/local-path-provisioner-rwx@server:*"
