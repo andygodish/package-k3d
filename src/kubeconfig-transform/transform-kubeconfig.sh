@@ -96,7 +96,8 @@ mkdir -p "$(dirname "$OUT_PATH")"
 
 # macOS sed requires -i '' for in-place; but we avoid in-place and write to OUT_PATH.
 # Use a safe, literal substitution.
-perl -pe "s/\Q$SEARCH\E/$REPLACE/g" "$IN_PATH" > "$OUT_PATH"
+# Use a non-slash delimiter so URLs don't get parsed as regex modifiers.
+perl -pe "s{\Q$SEARCH\E}{$REPLACE}g" "$IN_PATH" > "$OUT_PATH"
 
 chmod 0600 "$OUT_PATH" 2>/dev/null || true
 
