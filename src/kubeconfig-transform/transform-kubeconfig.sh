@@ -11,7 +11,7 @@ set -euo pipefail
 
 PORT="6550"
 IN_PATH="$HOME/.kube/config"
-OUT_PATH="$(pwd)/kubeconfig.lan.yaml"
+OUT_PATH="$(pwd)/uds-dev.yaml"
 IP_OVERRIDE=""
 
 usage() {
@@ -20,7 +20,7 @@ Usage: $(basename "$0") [--in PATH] [--out PATH] [--port PORT] [--ip IP]
 
 Options:
   --in PATH     Input kubeconfig (default: ~/.kube/config)
-  --out PATH    Output kubeconfig (default: ./kubeconfig.lan.yaml)
+  --out PATH    Output kubeconfig (default: ./uds-dev.yaml)
   --port PORT   Port to use (default: 6550)
   --ip IP       Override detected host IP
 
