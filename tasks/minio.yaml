@@ -17,8 +17,8 @@ tasks:
     actions:
       - cmd: |
           alias kubectl="uds zarf tools kubectl"
-          MINIO_USER="$(kubectl get secret -n uds-dev-stack minio -o yaml | yq '.data.rootUser' | base64 -d)"
-          MINIO_PASSWORD="$(kubectl get secret -n uds-dev-stack minio -o yaml | yq '.data.rootPassword' | base64 -d)"
+          MINIO_USER="$(kubectl get secret -n uds-dev-stack minio -o yaml | uds zarf tools yq '.data.rootUser' | base64 -d)"
+          MINIO_PASSWORD="$(kubectl get secret -n uds-dev-stack minio -o yaml | uds zarf tools yq '.data.rootPassword' | base64 -d)"
 
           echo "Configuring MinIO alias 'local' with access key '${MINIO_USER}'"
           mc alias set local http://localhost:9000 "${MINIO_USER}" "${MINIO_PASSWORD}"
@@ -37,7 +37,7 @@ tasks:
     actions:
       - cmd: | 
           alias kubectl="uds zarf tools kubectl"
-          kubectl get secret -n ${{ .inputs.namespace }} ${{ .inputs.secret }} -o yaml | yq '${{ .inputs.data }}' | base64 -d
+          kubectl get secret -n ${{ .inputs.namespace }} ${{ .inputs.secret }} -o yaml | uds zarf tools yq '${{ .inputs.data }}' | base64 -d
 
   - name: create-bucket
     inputs:
