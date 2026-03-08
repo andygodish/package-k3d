@@ -108,12 +108,17 @@ tasks:
       - cmd: |
           set -e
 
-          DEST_DIR="$(dirname "${{ .inputs.out }}")"
+          OUT="${{ .inputs.out }}"
+          case "$OUT" in
+            ~/*) OUT="$HOME/${OUT#~/}" ;;
+          esac
+
+          DEST_DIR="$(dirname "$OUT")"
           mkdir -p "$DEST_DIR"
 
           SRC="${{ .inputs.alias }}/${{ .inputs.bucket }}/${{ .inputs.object }}"
-          echo "Downloading ${SRC} -> ${{ .inputs.out }}" >&2
-          mc cp "${SRC}" "${{ .inputs.out }}"
+          echo "Downloading ${SRC} -> ${OUT}" >&2
+          mc cp "${SRC}" "$OUT"
 
   - name: extract-secret-data
     inputs:

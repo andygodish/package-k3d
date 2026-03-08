@@ -92,7 +92,7 @@ tasks:
           alias: "remote"
           bucket: "uds"
           object: "uds-dev-config"
-          out: "~/.kube/uds-dev-config"
+          out: "$HOME/.kube/uds-dev-config"
 
   - name: deploy
     description: "Deploy K3d cluster with development settings"
