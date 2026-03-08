@@ -40,11 +40,11 @@ tasks:
           - ZARF_LOG_LEVEL=info
 
   - name: transform-kubeconfig
-    description: "Transform kubeconfig and write to ./uds.dev (wrapper around kubeconfig:transform)"
+    description: "Transform kubeconfig and write to ./uds-dev-config (wrapper around kubeconfig:transform)"
     actions:
       - task: kubeconfig:transform
         with:
-          out: "./uds.dev"
+          out: "./uds-dev-config"
 
   - name: deploy
     description: "Deploy K3d cluster with development settings"
