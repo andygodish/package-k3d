@@ -38,6 +38,45 @@ tasks:
         env:
           - ZARF_LOG_LEVEL=info
 
+  - name: transform-kubeconfig
+    description: "Rewrite a kubeconfig so it’s usable from another machine (0.0.0.0:<port> -> LAN IP)"
+    inputs:
+      in:
+        description: "Input kubeconfig path"
+        required: false
+        default: "~/.kube/config"
+      out:
+        description: "Output kubeconfig path"
+        required: false
+        default: "./kubeconfig.lan.yaml"
+      ip:
+        description: "LAN IP to rewrite the kubeconfig server to (e.g. 192.168.1.50)"
+        required: true
+      port:
+        description: "Optional API server port override"
+        required: false
+        default: ""
+    actions:
+      - cmd: |
+          set -e
+
+          SCRIPT="./src/kubeconfig-transform/transform-kubeconfig.sh"
+          if [ ! -f "$SCRIPT" ]; then
+            echo "Expected script not found: $SCRIPT" >&2
+            exit 1
+          fi
+
+          ARGS="--in '${{ .inputs.in }}' --out '${{ .inputs.out }}' --ip '${{ .inputs.ip }}'"
+          if [ -n "${{ .inputs.port }}" ]; then
+            ARGS="$ARGS --port '${{ .inputs.port }}'"
+          fi
+
+          # shellcheck disable=SC2086
+          eval bash "$SCRIPT" $ARGS
+
+          echo "Sanity check (best-effort):"
+          KUBECONFIG="${{ .inputs.out }}" uds zarf tools kubectl cluster-info || true
+
   - name: deploy
     description: "Deploy K3d cluster with development settings"
     actions:
