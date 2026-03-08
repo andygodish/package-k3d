@@ -44,7 +44,7 @@ tasks:
     actions:
       - task: kubeconfig:transform
         with:
-          KUBECONFIG_OUT: "./uds.dev"
+          out: "./uds.dev"
 
   - name: deploy
     description: "Deploy K3d cluster with development settings"
