@@ -4,13 +4,23 @@
 
 tasks:
   - name: port-forward
-    description: "Port forward MinIO backend and console service to localhost"
+    description: "Port forward MinIO backend and console service (default binds to 127.0.0.1)"
+    inputs:
+      address:
+        description: "Address to bind port-forward to (use 0.0.0.0 for remote access)"
+        required: false
+        default: "127.0.0.1"
     actions:
       - cmd: |
-          echo "Port forwarding MinIO backend service to localhost:9000"
-          nohup uds zarf tools kubectl port-forward -n uds-dev-stack svc/minio 9000:9000 >/tmp/minio-port-forward.log 2>&1 &
-          echo "Port forwarding MinIO console service to localhost:9001"
-          nohup uds zarf tools kubectl port-forward -n uds-dev-stack svc/minio-console 9001:9001 >>/tmp/minio-port-forward.log 2>&1 &
+          set -euo pipefail
+
+          # Ensure 9000/9001 are free before starting (avoids confusing bind errors)
+          ./tasks/scripts/ensure-port-forward-ports-free.sh 9000 9001
+
+          echo "Port forwarding MinIO backend service to ${{ .inputs.address }}:9000"
+          nohup uds zarf tools kubectl port-forward --address ${{ .inputs.address }} -n uds-dev-stack svc/minio 9000:9000 >/tmp/minio-port-forward.log 2>&1 &
+          echo "Port forwarding MinIO console service to ${{ .inputs.address }}:9001"
+          nohup uds zarf tools kubectl port-forward --address ${{ .inputs.address }} -n uds-dev-stack svc/minio-console 9001:9001 >>/tmp/minio-port-forward.log 2>&1 &
           echo "Port-forwarding started; logs in /tmp/minio-port-forward.log"
 
   - name: configure-alias
