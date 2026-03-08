@@ -39,6 +39,35 @@ tasks:
 
           mc alias set local http://localhost:9000 "${MINIO_USER}" "${MINIO_PASSWORD}"
 
+  - name: upload
+    description: "Upload a local file to a bucket/object in MinIO (requires alias already configured)"
+    inputs:
+      alias:
+        description: "mc alias to use"
+        required: false
+        default: "local"
+      bucket:
+        description: "Bucket name"
+        required: true
+      object:
+        description: "Object name (path within bucket)"
+        required: true
+      file:
+        description: "Local file path to upload"
+        required: true
+    actions:
+      - cmd: |
+          set -e
+
+          if [ ! -f "${{ .inputs.file }}" ]; then
+            echo "ERROR: file not found: ${{ .inputs.file }}" >&2
+            exit 1
+          fi
+
+          DEST="${{ .inputs.alias }}/${{ .inputs.bucket }}/${{ .inputs.object }}"
+          echo "Uploading ${{ .inputs.file }} -> ${DEST}" >&2
+          mc cp "${{ .inputs.file }}" "${DEST}"
+
   - name: extract-secret-data
     inputs:
       namespace:

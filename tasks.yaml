@@ -46,6 +46,21 @@ tasks:
         with:
           out: "./uds-dev-config"
 
+  - name: upload-kubeconfig
+    description: "Transform kubeconfig then upload it to MinIO bucket uds as a fixed object"
+    actions:
+      - task: transform-kubeconfig
+      - task: minio:port-forward
+        with:
+          address: "127.0.0.1"
+      - task: minio:configure-alias
+      - task: minio:upload
+        with:
+          alias: "local"
+          bucket: "uds"
+          object: "uds-dev-config"
+          file: "./uds-dev-config"
+
   - name: deploy
     description: "Deploy K3d cluster with development settings"
     actions:
