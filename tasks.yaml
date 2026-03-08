@@ -44,7 +44,7 @@ tasks:
       in:
         description: "Input kubeconfig path"
         required: false
-        default: "~/.kube/config"
+        default: ""
       out:
         description: "Output kubeconfig path"
         required: false
@@ -86,7 +86,19 @@ tasks:
 
           echo "Using IP: $IP" >&2
 
-          ARGS="--in '${{ .inputs.in }}' --out '${{ .inputs.out }}' --ip '${IP}'"
+          IN_PATH="${{ .inputs.in }}"
+          if [ -z "$IN_PATH" ]; then
+            # Prefer the kubeconfig for the package's cluster if present.
+            if [ -f "./kubeconfig" ]; then
+              IN_PATH="./kubeconfig"
+            elif [ -n "${KUBECONFIG:-}" ]; then
+              IN_PATH="$KUBECONFIG"
+            else
+              IN_PATH="$HOME/.kube/config"
+            fi
+          fi
+
+          ARGS="--in '${IN_PATH}' --out '${{ .inputs.out }}' --ip '${IP}'"
           if [ -n "${{ .inputs.port }}" ]; then
             ARGS="$ARGS --port '${{ .inputs.port }}'"
           fi
