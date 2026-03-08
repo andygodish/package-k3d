@@ -12,10 +12,10 @@ tasks:
         default: "127.0.0.1"
     actions:
       - cmd: |
-          set -euo pipefail
+          set -e
 
           # Ensure 9000/9001 are free before starting (avoids confusing bind errors)
-          ./src/kubeconfig-transform/ensure-ports-free.sh 9000 9001
+          bash ./src/kubeconfig-transform/ensure-ports-free.sh 9000 9001
 
           echo "Port forwarding MinIO backend service to ${{ .inputs.address }}:9000"
           nohup uds zarf tools kubectl port-forward --address ${{ .inputs.address }} -n uds-dev-stack svc/minio 9000:9000 >/tmp/minio-port-forward.log 2>&1 &
