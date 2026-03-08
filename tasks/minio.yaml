@@ -68,6 +68,53 @@ tasks:
           echo "Uploading ${{ .inputs.file }} -> ${DEST}" >&2
           mc cp "${{ .inputs.file }}" "${DEST}"
 
+  - name: configure-remote-alias
+    description: "Configure an mc alias for a remote MinIO endpoint (for downloading from another machine)"
+    inputs:
+      alias:
+        description: "mc alias name"
+        required: false
+        default: "remote"
+      endpoint:
+        description: "MinIO endpoint URL (e.g. http://<ubuntu-ip>:9000)"
+        required: true
+      accessKey:
+        description: "MinIO access key"
+        required: true
+      secretKey:
+        description: "MinIO secret key"
+        required: true
+    actions:
+      - cmd: |
+          set -e
+          mc alias set "${{ .inputs.alias }}" "${{ .inputs.endpoint }}" "${{ .inputs.accessKey }}" "${{ .inputs.secretKey }}"
+
+  - name: download
+    description: "Download an object from MinIO to a local path (requires alias already configured)"
+    inputs:
+      alias:
+        description: "mc alias to use"
+        required: true
+      bucket:
+        description: "Bucket name"
+        required: true
+      object:
+        description: "Object name (path within bucket)"
+        required: true
+      out:
+        description: "Local output path"
+        required: true
+    actions:
+      - cmd: |
+          set -e
+
+          DEST_DIR="$(dirname "${{ .inputs.out }}")"
+          mkdir -p "$DEST_DIR"
+
+          SRC="${{ .inputs.alias }}/${{ .inputs.bucket }}/${{ .inputs.object }}"
+          echo "Downloading ${SRC} -> ${{ .inputs.out }}" >&2
+          mc cp "${SRC}" "${{ .inputs.out }}"
+
   - name: extract-secret-data
     inputs:
       namespace:
