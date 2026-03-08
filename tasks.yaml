@@ -19,6 +19,17 @@ variables:
     description: "Path to the zarf config file"
     default: "zarf-config.toml"
 
+  # For fetching kubeconfig from a remote MinIO endpoint (work-machine side)
+  - name: MINIO_REMOTE_ENDPOINT
+    description: "Remote MinIO endpoint URL (e.g. http://<ubuntu-ip>:9000)"
+    default: ""
+  - name: MINIO_REMOTE_ACCESS_KEY
+    description: "Remote MinIO access key"
+    default: ""
+  - name: MINIO_REMOTE_SECRET_KEY
+    description: "Remote MinIO secret key"
+    default: ""
+
 tasks:
   - name: pull
     description: "Pull UDS K3d package from OCI registry"
@@ -63,23 +74,19 @@ tasks:
 
   - name: fetch-kubeconfig
     description: "Fetch kubeconfig from remote MinIO (bucket uds/object uds-dev-config) to ~/.kube/uds-dev-config"
-    inputs:
-      endpoint:
-        description: "Remote MinIO endpoint URL (e.g. http://<ubuntu-ip>:9000)"
-        required: true
-      accessKey:
-        description: "MinIO access key"
-        required: true
-      secretKey:
-        description: "MinIO secret key"
-        required: true
     actions:
+      - cmd: |
+          set -e
+          if [ -z "${MINIO_REMOTE_ENDPOINT}" ] || [ -z "${MINIO_REMOTE_ACCESS_KEY}" ] || [ -z "${MINIO_REMOTE_SECRET_KEY}" ]; then
+            echo "ERROR: set MINIO_REMOTE_ENDPOINT, MINIO_REMOTE_ACCESS_KEY, MINIO_REMOTE_SECRET_KEY" >&2
+            exit 1
+          fi
       - task: minio:configure-remote-alias
         with:
           alias: "remote"
-          endpoint: "${{ .inputs.endpoint }}"
-          accessKey: "${{ .inputs.accessKey }}"
-          secretKey: "${{ .inputs.secretKey }}"
+          endpoint: "${MINIO_REMOTE_ENDPOINT}"
+          accessKey: "${MINIO_REMOTE_ACCESS_KEY}"
+          secretKey: "${MINIO_REMOTE_SECRET_KEY}"
       - task: minio:download
         with:
           alias: "remote"
