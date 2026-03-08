@@ -1,5 +1,6 @@
 includes:
   - minio: tasks/minio.yaml
+  - kubeconfig: tasks/kubeconfig.yaml
 
 variables:
   - name: K3D_REGISTRY
@@ -17,6 +18,17 @@ variables:
   - name: CONFIG_FILE
     description: "Path to the zarf config file"
     default: "zarf-config.toml"
+
+  # For fetching kubeconfig from a remote MinIO endpoint (work-machine side)
+  - name: MINIO_REMOTE_ENDPOINT
+    description: "Remote MinIO endpoint URL (e.g. http://<ubuntu-ip>:9000)"
+    default: ""
+  - name: MINIO_REMOTE_ACCESS_KEY
+    description: "Remote MinIO access key"
+    default: ""
+  - name: MINIO_REMOTE_SECRET_KEY
+    description: "Remote MinIO secret key"
+    default: ""
 
 tasks:
   - name: pull
@@ -37,6 +49,50 @@ tasks:
           uds zarf package pull ${ARCH_FLAG} oci://${K3D_REGISTRY}/${K3D_PACKAGE_NAME}:${K3D_PACKAGE_VERSION}
         env:
           - ZARF_LOG_LEVEL=info
+
+  - name: transform-kubeconfig
+    description: "Transform kubeconfig and write to ./uds-dev-config (wrapper around kubeconfig:transform)"
+    actions:
+      - task: kubeconfig:transform
+        with:
+          out: "./uds-dev-config"
+
+  - name: upload-kubeconfig
+    description: "Transform kubeconfig then upload it to MinIO bucket uds as a fixed object"
+    actions:
+      - task: transform-kubeconfig
+      - task: minio:port-forward
+        with:
+          address: "127.0.0.1"
+      - task: minio:configure-alias
+      - task: minio:upload
+        with:
+          alias: "local"
+          bucket: "uds"
+          object: "uds-dev-config"
+          file: "./uds-dev-config"
+
+  - name: fetch-kubeconfig
+    description: "Fetch kubeconfig from remote MinIO (bucket uds/object uds-dev-config) to ~/.kube/uds-dev-config"
+    actions:
+      - cmd: |
+          set -e
+          if [ -z "${MINIO_REMOTE_ENDPOINT}" ] || [ -z "${MINIO_REMOTE_ACCESS_KEY}" ] || [ -z "${MINIO_REMOTE_SECRET_KEY}" ]; then
+            echo "ERROR: set MINIO_REMOTE_ENDPOINT, MINIO_REMOTE_ACCESS_KEY, MINIO_REMOTE_SECRET_KEY" >&2
+            exit 1
+          fi
+      - task: minio:configure-remote-alias
+        with:
+          alias: "remote"
+          endpoint: "${MINIO_REMOTE_ENDPOINT}"
+          accessKey: "${MINIO_REMOTE_ACCESS_KEY}"
+          secretKey: "${MINIO_REMOTE_SECRET_KEY}"
+      - task: minio:download
+        with:
+          alias: "remote"
+          bucket: "uds"
+          object: "uds-dev-config"
+          out: "$HOME/.kube/uds-dev-config"
 
   - name: deploy
     description: "Deploy K3d cluster with development settings"
