@@ -31,19 +31,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "$IP" ]]; then
-  if command -v ip >/dev/null 2>&1; then
-    IP="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i=1;i<=NF;i++) if ($i=="src") {print $(i+1); exit}}')"
-  fi
-  if [[ -z "$IP" ]] && command -v hostname >/dev/null 2>&1; then
-    IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
-  fi
-fi
-
-if [[ -z "$IP" ]]; then
-  echo "ERROR: could not auto-detect LAN IP; pass --ip" >&2
-  exit 1
-fi
+# IP auto-detection is delegated to transform-kubeconfig.sh, which handles both
+# Linux and macOS. Only forward --ip when the caller explicitly provided one.
 
 auto_in() {
   if [[ -f ./kubeconfig ]]; then
@@ -67,7 +56,10 @@ if [[ ! -f "$SCRIPT" ]]; then
   exit 1
 fi
 
-ARGS=("--in" "$IN_PATH" "--out" "$OUT_PATH" "--ip" "$IP")
+ARGS=("--in" "$IN_PATH" "--out" "$OUT_PATH")
+if [[ -n "$IP" ]]; then
+  ARGS+=("--ip" "$IP")
+fi
 if [[ -n "$PORT" ]]; then
   ARGS+=("--port" "$PORT")
 fi
