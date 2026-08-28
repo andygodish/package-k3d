@@ -36,10 +36,10 @@ Example (QNAP at `192.168.1.55`, export `:/uds-local`, NFSv4):
 docker volume create --driver local \
   --opt type=nfs \
   --opt o=addr=192.168.1.55,nfsvers=4,rw \
-  --opt device=:/uds-local \
-  uds-local-nfs
+  --opt device=:/uds-dev \
+  uds-dev-nfs
 
-docker volume inspect uds-local-nfs
+docker volume inspect uds-dev-nfs
 ```
 
 ### 2) Mount the Docker NFS volume into the k3d server node
