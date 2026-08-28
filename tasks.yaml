@@ -135,3 +135,10 @@ tasks:
           alias: local
           policy: zarf-registry-policy
           username: zarf-registry
+
+  - name: minio-remote-port-forward
+    description: "Port forward Mino for remote LAN access"
+    actions:
+      - task: minio:port-forward
+        with:
+          address: "0.0.0.0"
