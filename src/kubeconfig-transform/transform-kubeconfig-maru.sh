@@ -95,4 +95,14 @@ fi
 
 bash "$SCRIPT" "${ARGS[@]}"
 
+# The k3d API server certificate is generated for addresses known when the
+# cluster is created and may not contain the LAN address used by this
+# transformed kubeconfig. This is a development-only kubeconfig, so disable
+# API server certificate verification while retaining client certificate
+# authentication.
+uds zarf tools kubectl config \
+  --kubeconfig="$OUT_PATH" \
+  set-cluster k3d-uds \
+  --insecure-skip-tls-verify=true
+
 echo "Wrote: $OUT_PATH" >&2
