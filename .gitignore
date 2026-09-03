@@ -9,3 +9,4 @@ zarf-config.yaml
 *.tar
 uds-dev.yaml
 uds-dev-config
+kubeconfig.lan.yaml

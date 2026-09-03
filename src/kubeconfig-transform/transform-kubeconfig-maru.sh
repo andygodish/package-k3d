@@ -2,10 +2,14 @@
 set -euo pipefail
 
 # Wrapper intended to be called from UDS Maru tasks (which run under /bin/sh).
-# Keeps bash-y logic out of tasks YAML.
+# Keeps bash-specific argument handling out of tasks YAML.
+#
+# IP auto-detection is intentionally delegated to transform-kubeconfig.sh
+# so there is a single implementation responsible for determining the
+# appropriate LAN address.
 
 IN_PATH=""
-OUT_PATH="./uds.dev"
+OUT_PATH="./uds-dev-config"
 IP=""
 PORT=""
 
@@ -15,35 +19,41 @@ Usage: $0 [--in PATH] [--out PATH] [--ip IPv4] [--port PORT]
 
 Defaults:
   --in   ./kubeconfig if present, else \$KUBECONFIG, else ~/.kube/config
-  --out  ./uds.dev
-  --ip   auto-detected (primary egress IPv4)
+  --out  ./uds-dev-config
+  --ip   auto-detected by transform-kubeconfig.sh
+  --port use the port already present in the kubeconfig
 EOF
 }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --in) IN_PATH="$2"; shift 2 ;;
-    --out) OUT_PATH="$2"; shift 2 ;;
-    --ip) IP="$2"; shift 2 ;;
-    --port) PORT="$2"; shift 2 ;;
-    -h|--help) usage; exit 0 ;;
-    *) echo "Unknown arg: $1" >&2; usage; exit 2 ;;
+    --in)
+      IN_PATH="$2"
+      shift 2
+      ;;
+    --out)
+      OUT_PATH="$2"
+      shift 2
+      ;;
+    --ip)
+      IP="$2"
+      shift 2
+      ;;
+    --port)
+      PORT="$2"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown arg: $1" >&2
+      usage
+      exit 2
+      ;;
   esac
 done
-
-if [[ -z "$IP" ]]; then
-  if command -v ip >/dev/null 2>&1; then
-    IP="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i=1;i<=NF;i++) if ($i=="src") {print $(i+1); exit}}')"
-  fi
-  if [[ -z "$IP" ]] && command -v hostname >/dev/null 2>&1; then
-    IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
-  fi
-fi
-
-if [[ -z "$IP" ]]; then
-  echo "ERROR: could not auto-detect LAN IP; pass --ip" >&2
-  exit 1
-fi
 
 auto_in() {
   if [[ -f ./kubeconfig ]]; then
@@ -67,14 +77,22 @@ if [[ ! -f "$SCRIPT" ]]; then
   exit 1
 fi
 
-ARGS=("--in" "$IN_PATH" "--out" "$OUT_PATH" "--ip" "$IP")
+ARGS=(
+  "--in" "$IN_PATH"
+  "--out" "$OUT_PATH"
+)
+
+# Only pass --ip when explicitly provided.
+# Otherwise transform-kubeconfig.sh performs auto-detection.
+if [[ -n "$IP" ]]; then
+  ARGS+=("--ip" "$IP")
+fi
+
+# Only override the API server port when explicitly provided.
 if [[ -n "$PORT" ]]; then
   ARGS+=("--port" "$PORT")
 fi
 
 bash "$SCRIPT" "${ARGS[@]}"
-
-echo "Sanity check (best-effort):" >&2
-KUBECONFIG="$OUT_PATH" uds zarf tools kubectl cluster-info || true
 
 echo "Wrote: $OUT_PATH" >&2
