@@ -55,6 +55,9 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# IP auto-detection is delegated to transform-kubeconfig.sh, which handles both
+# Linux and macOS. Only forward --ip when the caller explicitly provided one.
+
 auto_in() {
   if [[ -f ./kubeconfig ]]; then
     echo "./kubeconfig"
@@ -77,18 +80,10 @@ if [[ ! -f "$SCRIPT" ]]; then
   exit 1
 fi
 
-ARGS=(
-  "--in" "$IN_PATH"
-  "--out" "$OUT_PATH"
-)
-
-# Only pass --ip when explicitly provided.
-# Otherwise transform-kubeconfig.sh performs auto-detection.
+ARGS=("--in" "$IN_PATH" "--out" "$OUT_PATH")
 if [[ -n "$IP" ]]; then
   ARGS+=("--ip" "$IP")
 fi
-
-# Only override the API server port when explicitly provided.
 if [[ -n "$PORT" ]]; then
   ARGS+=("--port" "$PORT")
 fi
